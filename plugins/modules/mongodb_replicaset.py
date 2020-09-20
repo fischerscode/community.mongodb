@@ -70,6 +70,10 @@ options:
     type: int
     choices: [ 0, 1 ]
     default: 1
+  is_configsvr:
+    description: Specifies if this replicaset is a configserver.
+    type: bool
+    default: no
 notes:
 - Requires the pymongo Python package on the remote host, version 2.4.2+. This
   can be installed using pip or the OS package manager. @see U(http://api.mongodb.org/python/current/installation.html)
@@ -199,7 +203,7 @@ def replicaset_find(client):
 
 
 def replicaset_add(module, client, replica_set, members, arbiter_at_index, protocol_version,
-                   chaining_allowed, heartbeat_timeout_secs, election_timeout_millis):
+                   chaining_allowed, heartbeat_timeout_secs, election_timeout_millis, is_configsvr):
 
     try:
         from collections import OrderedDict
@@ -242,6 +246,7 @@ def replicaset_add(module, client, replica_set, members, arbiter_at_index, proto
             raise ValueError("member should be a str or dict. Instead found: {0}".format(str(type(members))))
 
     conf = OrderedDict([("_id", replica_set),
+                        ("configsvr", is_configsvr),
                         ("protocolVersion", protocol_version),
                         ("members", members_dict_list),
                         ("settings", settings)])
@@ -278,6 +283,7 @@ def main():
         members=dict(type='list', elements='raw'),
         protocol_version=dict(type='int', default=1, choices=[0, 1]),
         replica_set=dict(type='str', default="rs0"),
+        is_configsvr=dict(type="bool", default=False),
         validate=dict(type='bool', default=True)
     )
     module = AnsibleModule(
@@ -296,6 +302,7 @@ def main():
     login_host = module.params['login_host']
     login_port = module.params['login_port']
     replica_set = module.params['replica_set']
+    is_configsvr = module.params['is_configsvr']
     members = module.params['members']
     arbiter_at_index = module.params['arbiter_at_index']
     validate = module.params['validate']
@@ -376,7 +383,7 @@ def main():
                 replicaset_add(module, client, replica_set, members,
                                arbiter_at_index, protocol_version,
                                chaining_allowed, heartbeat_timeout_secs,
-                               election_timeout_millis)
+                               election_timeout_millis, is_configsvr)
                 result['changed'] = True
             except Exception as e:
                 module.fail_json(msg='Unable to create replica_set: %s' % to_native(e))
